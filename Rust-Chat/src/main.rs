@@ -1,7 +1,8 @@
 use std::{error::Error, net::SocketAddr};
 
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    fs::OpenOptions,
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
     sync::broadcast::{self, Receiver, Sender},
 };
@@ -36,12 +37,17 @@ async fn proceed(
 
     let (read, mut writer) = socket.split();
 
-
-    //history demo
-    writer.write_all("hi\n hi how are you\n im fine \n".as_bytes()).await?; 
-
-
-
+    //reading history data
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open("Rust-Chat/src/data.txt")
+        .await?;
+    let mut data = String::new();
+    file.read_to_string(&mut data).await?;
+    writer.write_all(data.as_bytes()).await?;
+    //
     let mut reader = BufReader::new(read);
     let mut line = String::new();
 
@@ -53,8 +59,13 @@ async fn proceed(
                     break Ok(());
                 }
                 tx.send((line.clone(), addr))?;
-                line.clear();
 
+                //writing history data
+                file.write_all(line.as_bytes()).await?;
+                println!("file edited");
+
+                line.clear();
+                //
             },
             result = rx.recv() => {
 
