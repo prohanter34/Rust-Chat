@@ -36,7 +36,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
             result = rx.recv() => {
                 let message = result.unwrap();
-                write.write_all(message.as_bytes()).await.expect("msg");
+                if message.trim() != String::from("") {
+                    write.write_all(message.as_bytes()).await.expect("msg");
+
+                }
             }
         };
         
