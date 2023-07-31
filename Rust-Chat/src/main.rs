@@ -54,7 +54,7 @@ async fn proceed(
     loop {
         tokio::select! {
             result = reader.read_line(&mut line) => {
-
+                println!("{}", line);
                 if result.unwrap() == 0 {
                     break Ok(());
                 }
