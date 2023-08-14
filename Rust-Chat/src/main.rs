@@ -9,7 +9,7 @@ use tokio::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let listener = TcpListener::bind("localhost:8000").await?;
+    let listener = TcpListener::bind("127.0.0.1:8000").await?;
 
     let (tx, _rx) = broadcast::channel(20);
 

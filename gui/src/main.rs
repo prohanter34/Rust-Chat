@@ -4,7 +4,7 @@ use eframe::egui;
 use egui::{ScrollArea, Vec2};
 use std::{
     sync::{Arc, Mutex},
-    time::Duration,
+    time::Duration, f32::consts::E,
 };
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -32,6 +32,7 @@ struct MyApp {
     input_m: Arc<Mutex<String>>,
     name: String,
     input_name_line: String,
+    connection_error: Arc<Mutex<bool>>
 }
 
 impl Default for MyApp {
@@ -40,8 +41,17 @@ impl Default for MyApp {
         let input_clone = Arc::clone(&input_m);
         let data_m: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let data_clone = Arc::clone(&data_m);
+        let connection_error_m = Arc::new(Mutex::new(false));
+        let connection_error_clone = Arc::clone(&connection_error_m);
         tokio::spawn(async move {
-            let mut socket = TcpStream::connect("localhost:8000").await.unwrap();
+            let mut socket;
+            
+            if let Ok(_socket) = TcpStream::connect("127.0.0.1:8000").await {
+                socket = _socket;
+            } else {
+                *(connection_error_clone.lock().unwrap()) = true;
+                panic!("connection error");
+            }
 
             let (read, mut write) = socket.split();
             let mut reader = BufReader::new(read);
@@ -87,6 +97,7 @@ impl Default for MyApp {
             input_m,
             name: String::new(),
             input_name_line: String::new(),
+            connection_error: connection_error_m,
         }
     }
 }
@@ -105,6 +116,15 @@ impl eframe::App for MyApp {
                         }
                     });
                 });
+        } else if *(self.connection_error.lock().unwrap()) {
+            egui::Window::new("Connection error")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Connection error");
+                    });
+                });
         } else {
             egui::CentralPanel::default().show(ctx, |ui| {
                 // ui.vertical_centered(|ui| {
@@ -114,6 +134,7 @@ impl eframe::App for MyApp {
                     }
                     ui.allocate_space(ui.available_size());
                 });
+                
 
                 ui.allocate_space(ui.available_size() - Vec2::new(1.0, 20.0));
 

@@ -2,5 +2,6 @@
 members = [
     "rust-chat",
     "client",
-    "gui"
+    "gui",
+    "echo_server",
 ]
