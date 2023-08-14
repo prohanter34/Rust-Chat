@@ -104,6 +104,11 @@ impl Default for MyApp {
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+
+        if (*(self.data_m.lock().unwrap())).len() > 10 {
+            (*(self.data_m.lock().unwrap())).remove(0);
+        }
+
         if self.name == "" {
             egui::Window::new("Enter your name")
                 .collapsible(false)
@@ -146,6 +151,16 @@ impl eframe::App for MyApp {
                         (*self.data_m.lock().unwrap()).push(self.input.clone());
                         (*(self.input_m.lock().unwrap())) = self.input.clone();
                         self.input = String::new();
+                        
+                    }
+                    if ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        self.input += "\n";
+                        self.input = self.name.clone() + " -- " + self.input.as_str();
+                        (*self.data_m.lock().unwrap()).push(self.input.clone());
+                        (*(self.input_m.lock().unwrap())) = self.input.clone();
+                        self.input = String::new();
+                        
+
                     }
                 });
 
