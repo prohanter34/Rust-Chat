@@ -24,7 +24,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         });
     }
 
-    // Ok(())
 }
 
 async fn proceed(
@@ -33,27 +32,42 @@ async fn proceed(
     tx: Sender<(String, SocketAddr)>,
     mut rx: Receiver<(String, SocketAddr)>,
 ) -> Result<(), Box<dyn Error>> {
+
+    // initialization client
+
     println!("thread spawn");
 
     let (read, mut writer) = socket.split();
 
     //reading history data
-    let mut file = OpenOptions::new()
+    let mut file_data = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
         .open("Rust-Chat/src/data.txt")
         .await?;
     let mut data = String::new();
-    file.read_to_string(&mut data).await?;
+    file_data.read_to_string(&mut data).await?;
     writer.write_all(data.as_bytes()).await?;
+    // user data
+    let mut users_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open("Rust-Chat/src/users.txt")
+        .await?;
+    let mut users = String::new();
+    users_file.read_to_string(&mut users).await.unwrap();
     //
     let mut reader = BufReader::new(read);
     let mut line = String::new();
 
+    // event loop
+
     loop {
         tokio::select! {
             result = reader.read_line(&mut line) => {
+                //////?????    frame checker
                 println!("{}", line);
                 if result.unwrap() == 0 {
                     break Ok(());
@@ -61,7 +75,7 @@ async fn proceed(
                 tx.send((line.clone(), addr))?;
 
                 //writing history data
-                file.write_all(line.as_bytes()).await?;
+                file_data.write_all(line.as_bytes()).await?;
                 println!("file edited");
 
                 line.clear();
@@ -71,7 +85,7 @@ async fn proceed(
 
                 let (message, some_addr) = result.unwrap();
                 if some_addr != addr {
-                    
+                    ////////////???? frame creator
                     writer.write_all(message.as_bytes()).await?;
 
                 }
@@ -81,3 +95,4 @@ async fn proceed(
         };
     }
 }
+
