@@ -4,7 +4,7 @@ use eframe::egui;
 use egui::{ScrollArea, Vec2};
 use std::{
     sync::{Arc, Mutex},
-    time::Duration, f32::consts::E,
+    time::Duration, thread,
 };
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -20,7 +20,7 @@ async fn main() -> Result<(), eframe::Error> {
         ..Default::default()
     };
     eframe::run_native(
-        "My egui App",
+        "Rust chat",
         options,
         Box::new(|_cc| Box::<MyApp>::default()),
     )

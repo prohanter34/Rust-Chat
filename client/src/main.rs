@@ -26,16 +26,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
-    // let options = eframe::NativeOptions {
-    //     initial_window_size: Some(egui::vec2(640.0, 440.0)),
-    //     ..Default::default()
-    // };
-    // eframe::run_native(
-    //     "My egui App",
-    //     options,
-    //     Box::new(|_cc| Box::<MyApp>::default()),
-    // ).expect("gui error");
-
     
     loop {
         
