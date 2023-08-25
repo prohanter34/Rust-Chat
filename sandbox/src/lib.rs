@@ -1,10 +1,11 @@
-use std::net::SocketAddr;
+use std::{error::Error, net::SocketAddr};
 
-use tokio::{net::{tcp::{ReadHalf, WriteHalf}, TcpStream}, fs::File, sync::broadcast::{Sender, Receiver}};
+use tokio::{net::{tcp::{ReadHalf, WriteHalf}, TcpStream}, fs::{File, OpenOptions}, sync::broadcast::{Sender, Receiver}, io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader}};
 
-struct App {
-    read: ReadHalf<'static>,
-    write: WriteHalf<'static>,
+pub struct App<'a> {
+    reader: BufReader<ReadHalf<'a>>,
+    read_line: String,
+    write: WriteHalf<'a>,
     addr: SocketAddr,
     message_data: File,
     users_data: File,
@@ -12,26 +13,85 @@ struct App {
     rx: Receiver<(String, SocketAddr)>,
 }
 
-impl App {
-    pub fn init(
-        mut socket: TcpStream,
+impl<'a> App<'a> {
+    pub async fn init(
+        read: ReadHalf<'a>,
+        mut write: WriteHalf<'a>,
         addr: SocketAddr,
         tx: Sender<(String, SocketAddr)>,
-        mut rx: Receiver<(String, SocketAddr)>,
-    ) -> App {
+        rx: Receiver<(String, SocketAddr)>,
+    ) -> Result<App<'a>, Box<dyn Error>> {
    
-        let (read, write) = socket.split();
+        
+        let reader = BufReader::new(read);
+        let line = String::new();
 
-        let app = App {
-            read,
+        // message history
+        let mut file_data = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open("Rust-Chat/src/data.txt")
+        .await?;
+        let mut data = String::new();
+        file_data.read_to_string(&mut data).await?;
+        write.write_all(data.as_bytes()).await?;
+        // users data ??????
+
+        let mut users_file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open("Rust-Chat/src/users.txt")
+        .await?;
+        let mut users = String::new();
+        users_file.read_to_string(&mut users).await.unwrap();
+
+        //
+        let app: App<'a> = App {
+            reader,
+            read_line: line,
             write,
             addr,
-            message_data: todo!(),
-            users_data: todo!(),
+            message_data: file_data,
+            users_data: users_file,
             tx,
             rx,
         };
-        return app;
+        return Ok(app);
+    }
+
+    pub async fn start_event_loop(&mut self) -> Result<(), Box<dyn Error>> {
+        loop {
+            tokio::select! {
+                result = self.reader.read_line(&mut self.read_line) => {
+                    //////?????    frame checker
+                    println!("{}", self.read_line);
+                    if result.unwrap() == 0 {
+                        break Ok(());
+                    }
+                    self.tx.send((self.read_line.clone(), self.addr))?;
+    
+                    //writing history data
+                    self.message_data.write_all(self.read_line.as_bytes()).await?;
+                    println!("file edited");
+    
+                    self.read_line.clear();
+                    //
+                },
+                result = self.rx.recv() => {
+    
+                    let (message, some_addr) = result.unwrap();
+                    if some_addr != self.addr {
+                        ////////////???? frame creator
+                        self.write.write_all(message.as_bytes()).await?;
+    
+                    }
+                    self.read_line.clear();
+    
+                }
+            };
+        }
     }
 }
 
@@ -59,11 +119,6 @@ pub struct Frame {
     data: FrameData
 }
 
-impl Frame {
-    pub fn handle(self) {
-
-    }
-}
 
 pub fn frame_check(input: String) -> Frame {
 

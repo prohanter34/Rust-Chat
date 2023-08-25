@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "rust-chat",
+    "rust_chat",
     "client",
     "gui",
     "echo_server",
