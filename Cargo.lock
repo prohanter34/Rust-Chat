@@ -1128,6 +1128,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gui_test"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "tokio",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
