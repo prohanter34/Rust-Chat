@@ -22,17 +22,16 @@ impl<'a> App<'a> {
         rx: Receiver<(String, SocketAddr)>,
     ) -> Result<App<'a>, Box<dyn Error>> {
    
-        
         let reader = BufReader::new(read);
         let line = String::new();
-
+        
         // message history
         let mut file_data = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open("Rust-Chat/src/data.txt")
-        .await?;
+            .read(true)
+            .write(true)
+            .create(true)
+            .open("rust_chat/src/data.txt")
+            .await?;
         let mut data = String::new();
         file_data.read_to_string(&mut data).await?;
         write.write_all(data.as_bytes()).await?;
@@ -42,7 +41,7 @@ impl<'a> App<'a> {
         .read(true)
         .write(true)
         .create(true)
-        .open("Rust-Chat/src/users.txt")
+        .open("rust_chat/src/users.txt")
         .await?;
         let mut users = String::new();
         users_file.read_to_string(&mut users).await.unwrap();
@@ -84,6 +83,7 @@ impl<'a> App<'a> {
                     let (message, some_addr) = result.unwrap();
                     if some_addr != self.addr {
                         ////////////???? frame creator
+                        println!("{}", message);
                         self.write.write_all(message.as_bytes()).await?;
     
                     }

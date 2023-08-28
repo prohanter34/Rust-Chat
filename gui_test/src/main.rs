@@ -3,7 +3,7 @@
 use eframe::egui;
 use egui::{ScrollArea, Vec2};
 use std::{
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, mpsc::Sender},
     time::Duration, thread,
 };
 use tokio::{
@@ -32,7 +32,9 @@ struct MyApp {
     input_m: Arc<Mutex<String>>,
     name: String,
     input_name_line: String,
-    connection_error: Arc<Mutex<bool>>
+    connection_error: Arc<Mutex<bool>>,
+    login_flag: Arc<Mutex<bool>>,
+    tx: Sender<String>
 }
 
 impl Default for MyApp {
@@ -43,6 +45,9 @@ impl Default for MyApp {
         let data_clone = Arc::clone(&data_m);
         let connection_error_m = Arc::new(Mutex::new(false));
         let connection_error_clone = Arc::clone(&connection_error_m);
+        let login_flag = Arc::new(Mutex::new(false));
+        let login_flag_m = Arc::clone(&login_flag);
+        let (tx, rx) = std::sync::mpsc::channel();
         tokio::spawn(async move {
             let mut socket;
             
@@ -74,6 +79,8 @@ impl Default for MyApp {
             loop {
                 tokio::select! {
                     _ = reader.read_line(&mut buf) => {
+
+                        // frame reader
                         (*(data_clone.lock().unwrap())).push(buf.clone());
                         data.push(buf.clone());
                         buf.clear();
@@ -83,6 +90,7 @@ impl Default for MyApp {
                         let message = result.unwrap();
                         if message.trim() != String::from("") {
 
+                            // frame creator ?????
                             let _a = write.write(message.as_bytes()).await.expect("msg");
 
                         }
@@ -98,6 +106,8 @@ impl Default for MyApp {
             name: String::new(),
             input_name_line: String::new(),
             connection_error: connection_error_m,
+            tx,
+            login_flag
         }
     }
 }

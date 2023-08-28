@@ -6,4 +6,5 @@ members = [
     "gui_test",
     "echo_server",
     "sandbox",
+    "client_sandbox",
 ]

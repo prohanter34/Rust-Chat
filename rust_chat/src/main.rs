@@ -30,10 +30,10 @@ async fn proceed(
     mut socket: TcpStream,
     addr: SocketAddr,
     tx: Sender<(String, SocketAddr)>,
-    mut rx: Receiver<(String, SocketAddr)>,
+    rx: Receiver<(String, SocketAddr)>,
 ) -> Result<(), Box<dyn Error>> {
 
-
+    println!("thread spawn");
     let (read, write) = socket.split();
     let mut app = App::init(read, write, addr, tx, rx).await?;
     app.start_event_loop().await?;

@@ -517,6 +517,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "client_sandbox"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "tokio",
+]
+
+[[package]]
 name = "clipboard-win"
 version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
