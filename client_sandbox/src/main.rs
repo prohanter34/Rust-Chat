@@ -3,8 +3,8 @@
 use eframe::egui;
 use egui::{ScrollArea, Vec2, Pos2};
 use std::{
-    sync::{Arc, Mutex, mpsc::{Sender, Receiver}, self},
-    time::Duration, thread, net::TcpStream, io::{prelude::*, BufReader},
+    sync::{mpsc::{Sender, Receiver}, self},
+    thread, net::TcpStream, io::{prelude::*, BufReader},
 };
 
 #[tokio::main]
@@ -42,21 +42,29 @@ impl Default for MyApp {
         let _ = thread::spawn(move || {
 
             let mut socket = TcpStream::connect("127.0.0.1:8000").expect("connection error");
-            
-            loop {
-                let mut reader = BufReader::new(&socket);
-                println!("frferfererf");
-                let mut buf = String::new();
-                let result = reader.read_line(&mut buf).unwrap();
-                if result != 0 {
-                    tx2.send(buf).unwrap();
-                }
+            let socket_clone = socket.try_clone().unwrap();
 
+            let _ = thread::spawn(move || {
+                let mut reader = BufReader::new(socket_clone);
+                let mut buf = String::new();
+
+                loop {
+                    
+                    let result = reader.read_line(&mut buf).unwrap();
+                    if result != 0 {
+                        tx2.send(buf.clone()).unwrap();
+                    }
+                    buf.clear();
+                }
+            });
+
+            loop {
+                
                 let result = rx.try_recv();
 
                 match result {
                     Ok(frame) => {
-                        let message = frame + &"\n".to_string();
+                        let message = frame.trim().to_string() + &"\n".to_string();
                         socket.write_all(message.as_bytes()).expect("writing error");
                     },
                     Err(_) => {continue;}
@@ -131,14 +139,17 @@ impl eframe::App for MyApp {
                     if ui.button("Send").clicked() {
                         //create frame and send it ???? 
                         self.tx.send(self.message_input.clone()).unwrap();
-                        self.messages.push(self.message_input.clone());
+                        self.messages.push(self.message_input.clone() + "\n");
                         self.message_input.clear();                              
                     }
                     if ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
                         //create frame and send it ????
                         self.tx.send(self.message_input.clone()).unwrap();
-                        self.messages.push(self.message_input.clone());
+                        self.messages.push(self.message_input.clone() + "\n");
                         self.message_input.clear();
+                    }
+                    if self.messages.len() > 10  {
+                        self.messages.remove(0);
                     }
                 });
 

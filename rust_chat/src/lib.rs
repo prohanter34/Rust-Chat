@@ -1,14 +1,14 @@
-use std::{error::Error, net::SocketAddr};
+use std::{error::Error, net::SocketAddr, sync::Arc};
 
-use tokio::{net::{tcp::{ReadHalf, WriteHalf}, TcpStream}, fs::{File, OpenOptions}, sync::broadcast::{Sender, Receiver}, io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader}};
+use tokio::{net::tcp::{ReadHalf, WriteHalf}, fs::File, sync::{broadcast::{Sender, Receiver}, Mutex}, io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader}};
 
 pub struct App<'a> {
     reader: BufReader<ReadHalf<'a>>,
     read_line: String,
     write: WriteHalf<'a>,
     addr: SocketAddr,
-    message_data: File,
-    users_data: File,
+    message_data: Arc<Mutex<File>>,
+    users_data: Arc<Mutex<File>>,
     tx: Sender<(String, SocketAddr)>,
     rx: Receiver<(String, SocketAddr)>,
 }
@@ -20,31 +20,23 @@ impl<'a> App<'a> {
         addr: SocketAddr,
         tx: Sender<(String, SocketAddr)>,
         rx: Receiver<(String, SocketAddr)>,
+        message_data: Arc<Mutex<File>>,
+        users_data: Arc<Mutex<File>>
     ) -> Result<App<'a>, Box<dyn Error>> {
    
         let reader = BufReader::new(read);
         let line = String::new();
         
         // message history
-        let mut file_data = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open("rust_chat/src/data.txt")
-            .await?;
+        let mut messages_file = File::open("rust_chat/src/data.txt").await?;
         let mut data = String::new();
-        file_data.read_to_string(&mut data).await?;
+        messages_file.read_to_string(&mut data).await?;
+        println!("data:");
+        println!("{}", data);
         write.write_all(data.as_bytes()).await?;
         // users data ??????
-
-        let mut users_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open("rust_chat/src/users.txt")
-        .await?;
         let mut users = String::new();
-        users_file.read_to_string(&mut users).await.unwrap();
+        (users_data.lock().await).read_to_string(&mut users).await.unwrap();
 
         //
         let app: App<'a> = App {
@@ -52,8 +44,8 @@ impl<'a> App<'a> {
             read_line: line,
             write,
             addr,
-            message_data: file_data,
-            users_data: users_file,
+            message_data,
+            users_data,
             tx,
             rx,
         };
@@ -64,6 +56,7 @@ impl<'a> App<'a> {
         loop {
             tokio::select! {
                 result = self.reader.read_line(&mut self.read_line) => {
+                    self.read_line = self.read_line.trim().to_string() + &"\n".to_string();
                     //////?????    frame checker
                     println!("{}", self.read_line);
                     if result.unwrap() == 0 {
@@ -72,7 +65,7 @@ impl<'a> App<'a> {
                     self.tx.send((self.read_line.clone(), self.addr))?;
     
                     //writing history data
-                    self.message_data.write_all(self.read_line.as_bytes()).await?;
+                    (self.message_data.lock().await).write_all(self.read_line.as_bytes()).await.unwrap();
                     println!("file edited");
     
                     self.read_line.clear();
@@ -87,7 +80,6 @@ impl<'a> App<'a> {
                         self.write.write_all(message.as_bytes()).await?;
     
                     }
-                    self.read_line.clear();
     
                 }
             };
