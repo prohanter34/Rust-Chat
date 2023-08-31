@@ -18,22 +18,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .create(true)
         .open("rust_chat/src/data.txt")
         .await?;
-    
-
-    let users_data = OpenOptions::new()
-        .read(true)
-        .append(true)
-        .create(true)
-        .open("rust_chat/src/users.txt")
-        .await?;
 
     let messages_m = Arc::new(Mutex::new(messages_data));
-    let users_m = Arc::new(Mutex::new(users_data));
 
     loop {
 
         let messages_clone = Arc::clone(&messages_m);
-        let users_clone = Arc::clone(&users_m);
 
         let (socket, addr) = listener.accept().await?;
 
@@ -41,7 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let rx_clone = tx_clone.subscribe();
 
         let _join_handle = tokio::spawn(async move {
-            let _ = proceed(socket, addr, tx_clone, rx_clone, messages_clone, users_clone).await;
+            let _ = proceed(socket, addr, tx_clone, rx_clone, messages_clone).await;
         });
     }
 
@@ -53,12 +43,11 @@ async fn proceed(
     tx: Sender<(String, SocketAddr)>,
     rx: Receiver<(String, SocketAddr)>,
     messages_data: Arc<Mutex<File>>,
-    users_data: Arc<Mutex<File>>,
 ) -> Result<(), Box<dyn Error>> {
 
     println!("thread spawn");
     let (read, write) = socket.split();
-    let mut app = App::init(read, write, addr, tx, rx, messages_data, users_data).await?;
+    let mut app = App::init(read, write, addr, tx, rx, messages_data).await?;
     app.start_event_loop().await?;
     Ok(())
 }

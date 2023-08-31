@@ -28,7 +28,7 @@ struct MyApp {
     messages: Vec<String>,
     login_flag: bool,
     connection_error: bool,
-    tx: Sender<String>,
+    tx: Sender<Frame>,
     rx: Receiver<String>
     
 }
@@ -36,7 +36,7 @@ struct MyApp {
 impl Default for MyApp {
     fn default() -> Self {
 
-        let (tx, rx) = sync::mpsc::channel::<String>();
+        let (tx, rx) = sync::mpsc::channel::<Frame>();
         let (tx2, rx2) = sync::mpsc::channel();
 
         let _ = thread::spawn(move || {
@@ -60,12 +60,15 @@ impl Default for MyApp {
 
             loop {
                 
-                let result = rx.try_recv();
+                let result: Result<Frame, sync::mpsc::TryRecvError> = rx.try_recv();
 
                 match result {
                     Ok(frame) => {
-                        let message = frame.trim().to_string() + &"\n".to_string();
+
+                        let message = frame_creator(frame);
+                        println!("{}", message);
                         socket.write_all(message.as_bytes()).expect("writing error");
+                        println!("write in socket");
                     },
                     Err(_) => {continue;}
                 };
@@ -106,7 +109,9 @@ impl eframe::App for MyApp {
                         });
                         if ui.button("Ok").clicked() {
                             if self.login != "" && self.password != "" {
-    
+                                
+                                let frame = Frame::login(self.login.clone(), self.password.clone());
+                                self.tx.send(frame).unwrap();
                                 self.login_flag = false;
                             }
                         }
@@ -137,14 +142,16 @@ impl eframe::App for MyApp {
                 ui.horizontal(|ui| {
                     let _input_line = ui.text_edit_singleline(&mut self.message_input);
                     if ui.button("Send").clicked() {
-                        //create frame and send it ???? 
-                        self.tx.send(self.message_input.clone()).unwrap();
+                        //create frame and send it
+                        let frame = Frame::message(self.message_input.clone());
+                        self.tx.send(frame).unwrap();
                         self.messages.push(self.message_input.clone() + "\n");
                         self.message_input.clear();                              
                     }
                     if ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        //create frame and send it ????
-                        self.tx.send(self.message_input.clone()).unwrap();
+                        //create frame and send it
+                        let frame = Frame::message(self.message_input.clone());
+                        self.tx.send(frame).unwrap();
                         self.messages.push(self.message_input.clone() + "\n");
                         self.message_input.clear();
                     }
@@ -166,18 +173,18 @@ impl eframe::App for MyApp {
     }
 }
 
-fn frame_creator(frame: FrameType) -> String {
+fn frame_creator(frame: Frame) -> String {
     match frame {
-        FrameType::message(data) => {
-            return format!("message|{}", data);
+        Frame::message(data) => {
+            return format!("message|{}\n", data);
         },
-        FrameType::login(login, password) => {
-            return format!("login|{}|{}", login, password);
+        Frame::login(login, password) => {
+            return format!("login|{}|{}\n", login, password);
         },
     }
 }
 
-enum FrameType {
+enum Frame {
     message(String),
     login(String, String),
 }
